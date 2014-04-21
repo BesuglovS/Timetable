@@ -10,8 +10,13 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.io.IOException;
+
+import ru.besuglovs.nu.timetable.app.timetable.Timetable;
 
 
 public class MainActivity extends Activity implements LoaderManager.LoaderCallbacks<String> {
@@ -59,18 +64,30 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         int eprst = 999;
     }
 
-    class DecodeJSONTask extends AsyncTask<String, Void, String> {
+    class DecodeJSONTask extends AsyncTask<String, Void, Timetable> {
 
         @Override
-        protected String doInBackground(String... params) {
+        protected Timetable doInBackground(String... params) {
+            Log.d(Log_TAG, "JSON start");
+
+            ObjectMapper mapper = new ObjectMapper();
+            Timetable result = null;
             try {
-                JSONObject JSONObject = new JSONObject(params[0]);
-            } catch (JSONException e) {
+                result = mapper.readValue(params[0], Timetable.class);
+            }
+            catch (JsonMappingException e) {
+                Log.d(Log_TAG, "JSON mapping exception: " + e.getMessage());
+                e.printStackTrace();
+            } catch (JsonParseException e) {
+                Log.d(Log_TAG, "JSON parse exception: " + e.getMessage());
+                e.printStackTrace();
+            } catch (IOException e) {
+                Log.d(Log_TAG, "io exception: " + e.getMessage());
                 e.printStackTrace();
             }
-            Log.d(Log_TAG, "JSON");
 
-            return "Oops";
+            Log.d(Log_TAG, "JSON finish");
+            return result;
         }
     }
 

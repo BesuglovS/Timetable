@@ -63,8 +63,8 @@ public class TimeTableLoader extends Loader<String> {
                 String urlParameters = "{\"Parameters\":{\"action\":\"bundle\"}}";
 
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setReadTimeout(10000 /* milliseconds */);
-                connection.setConnectTimeout(15000 /* milliseconds */);
+                connection.setReadTimeout(10000);
+                connection.setConnectTimeout(15000);
 
                 connection.setDoOutput(true);
                 connection.setDoInput(true);
@@ -102,6 +102,7 @@ public class TimeTableLoader extends Loader<String> {
             char[] buffer = new char[bufferLength];
             StringBuilder sb = new StringBuilder();
             Integer byteRead;
+
 
             while( (byteRead = (reader.read(buffer))) != -1 ) {
                 if (byteRead == bufferLength) {

@@ -7,8 +7,8 @@
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
         <option name="modules">
           <set>
-            <option value="E:\javaprogs\Android\Timetable" />
-            <option value="E:\javaprogs\Android\Timetable\app" />
+            <option value="D:\bs\GitHub\Timetable" />
+            <option value="D:\bs\GitHub\Timetable\app" />
           </set>
         </option>
       </GradleProjectSettings>
