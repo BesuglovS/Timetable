@@ -1,9 +1,11 @@
 package ru.besuglovs.nu.timetable.app.timetable;
 
+import java.util.Date;
+
 /**
  * Created by bs on 21.04.2014.
  */
 public class Ring {
-    public String RingId;
-    public String Time;
+    public Integer RingId;
+    public Date Time;
 }

@@ -93,6 +93,7 @@ public class TimeTableLoader extends Loader<String> {
                     inputStream.close();
                 }
             }
+
         }
 
         // Reads an InputStream and converts it to a String.
