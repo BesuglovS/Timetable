@@ -5,18 +5,18 @@ import android.content.Loader;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.net.HttpURLConnection;
-import java.net.Proxy;
-import java.net.URL;
+import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
+import java.util.zip.DataFormatException;
+import java.util.zip.InflaterInputStream;
 
 /**
  * Created by bs on 20.04.2014.
@@ -43,6 +43,9 @@ public class TimeTableLoader extends Loader<String> {
     }
 
     class LoadTimeWIthAPI extends AsyncTask<Void, Void, String> {
+
+        public final int BUFFER_SIZE = 10000000;
+
         @Override
         protected String doInBackground(Void... params) {
             try {
@@ -50,72 +53,57 @@ public class TimeTableLoader extends Loader<String> {
                 return DownloadTimeTable();
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (DataFormatException e) {
+                e.printStackTrace();
             }
             return "123";
         }
 
-        private String DownloadTimeTable() throws IOException {
-            InputStream inputStream = null;
-            int bufferLength = 1024000;
-
-            try {
-                URL url = new URL("http://wiki.nayanova.edu/api.php");
-                String urlParameters = "{\"Parameters\":{\"action\":\"bundle\"}}";
-
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setReadTimeout(10000);
-                connection.setConnectTimeout(15000);
-
-                connection.setDoOutput(true);
-                connection.setDoInput(true);
-                connection.setInstanceFollowRedirects(false);
-                connection.setRequestMethod("POST");
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-                connection.setRequestProperty("charset", "utf-8");
-                connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
-                connection.setUseCaches(false);
-
-                DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
-                wr.writeBytes(urlParameters);
-                wr.flush();
-                wr.close();
-
-                // Starts the query
-                Log.d(MainActivity.Log_TAG, "connect");
-                connection.connect();
-
-                inputStream = connection.getInputStream();
-
-                // Convert the InputStream into a string
-                return readIt(inputStream, bufferLength);
-            } finally {
-                if (inputStream != null) {
-                    inputStream.close();
+        private String ByteArrayToString(byte[] data) throws UnsupportedEncodingException {
+            StringBuilder sb = new StringBuilder();
+            final int CHUNK_SIZE = 100;
+            final int CNT = data.length / CHUNK_SIZE;
+            int p = 0;
+            for ( int i = 0; i < CNT; ++i, p += CHUNK_SIZE )
+            {
+                int chuckSize = CHUNK_SIZE;
+                if (p + CHUNK_SIZE > data.length)
+                {
+                    chuckSize = data.length - p;
                 }
+                final byte[] tmp = Arrays.copyOfRange(data, p, p + chuckSize);
+                final String part = new String( tmp, 0, tmp.length, "UTF-8");
+                sb.append(part);
             }
-
+            return sb.toString();
         }
 
-        // Reads an InputStream and converts it to a String.
-        public String readIt(InputStream stream, int bufferLength) throws IOException {
-            Reader reader;
-            reader = new InputStreamReader(stream, "utf-8");
-            char[] buffer = new char[bufferLength];
-            StringBuilder sb = new StringBuilder();
-            Integer byteRead;
+        private String DownloadTimeTable() throws IOException, DataFormatException {
+            HttpClient client = new DefaultHttpClient();
+            HttpPost post = new HttpPost("http://wiki.nayanova.edu/api.php");
 
+            post.addHeader("Content-Type", "application/x-www-form-urlencoded");
+            StringEntity params = new StringEntity("{\"Parameters\":{\"action\":\"bundle\"}}");
+            post.setEntity(params);
 
-            while( (byteRead = (reader.read(buffer))) != -1 ) {
-                if (byteRead == bufferLength) {
-                    sb.append(buffer);
-                    Log.d(MainActivity.Log_TAG, "readIt = " + sb.length());
-                }
-                else {
-                    sb.append(Arrays.copyOf(buffer, byteRead));
-                }
+            HttpResponse response = client.execute(post);
+
+            InputStream inputStream = response.getEntity().getContent();
+            Log.d(MainActivity.Log_TAG, "Got input stream");
+
+            InflaterInputStream iis = new InflaterInputStream(inputStream);
+            byte[] resultArray = new byte[BUFFER_SIZE];
+            Integer offset = 0, bytesRead;
+            while ((bytesRead = iis.read(resultArray, offset, BUFFER_SIZE - offset)) != -1)
+            {
+                offset += bytesRead;
             }
+            Log.d(MainActivity.Log_TAG, "Read complete");
 
-            return sb.toString();
+            // new String() takes forever ~ 10 min
+            // String result = new String(Arrays.copyOf(resultArray, offset), "UTF-8");
+            String result = ByteArrayToString(resultArray);
+            return result;
         }
 
         @Override
@@ -124,6 +112,5 @@ public class TimeTableLoader extends Loader<String> {
 
             FromTaskToLoader(result);
         }
-
     }
 }

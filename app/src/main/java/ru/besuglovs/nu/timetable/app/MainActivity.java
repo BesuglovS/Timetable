@@ -10,23 +10,15 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 
-import com.fasterxml.jackson.core.JsonEncoding;
 import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 
 import ru.besuglovs.nu.timetable.app.timetable.Auditorium;
 import ru.besuglovs.nu.timetable.app.timetable.Calendar;
@@ -89,18 +81,38 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     }
 
     class DecodeJSONTask extends AsyncTask<String, Void, Timetable> {
-
         @Override
         protected Timetable doInBackground(String... params) {
             Log.d(Log_TAG, "JSON start");
 
+            Timetable result = JacksonOneLineObjectMapperParser(params[0]);
+            //Timetable result = JacksonJParserDecode(params[0]);
+
+            Integer eprst = 999;
+
+            Log.d(Log_TAG, "JSON finish");
+            return result;
+        }
+
+        private Timetable JacksonOneLineObjectMapperParser(String param) {
+            ObjectMapper mapper = new ObjectMapper(); // can reuse, share globally
+            Timetable result = null;
+            try {
+                result = mapper.readValue(param, Timetable.class);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return result;
+        }
+
+        private Timetable JacksonJParserDecode(String param) {
             Timetable result = new Timetable();
 
             JsonFactory jfactory = new JsonFactory();
 
             JsonParser jParser = null;
             try {
-                jParser = jfactory.createParser(params[0]);
+                jParser = jfactory.createParser(param);
 
                 while (jParser.nextToken() != null) {
                     if (jParser.getCurrentToken() == JsonToken.START_ARRAY)
@@ -190,7 +202,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 newLesson.LessonId = Integer.parseInt(jParser.nextTextValue());
 
                                 jParser.nextToken();
-                                newLesson.IsActive = jParser.nextTextValue().equals("1");
+                                newLesson.IsActive = Integer.parseInt(jParser.nextTextValue());
 
                                 jParser.nextToken();
                                 newLesson.TeacherForDisciplineId = Integer.parseInt(jParser.nextTextValue());
@@ -222,7 +234,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                                 jParser.nextToken();
                                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-                                newRing.Time = sdf.parse(jParser.nextTextValue());
+                                newRing.Time = jParser.nextTextValue();
 
                                 result.rings.add(newRing);
                                 jParser.nextToken();
@@ -249,13 +261,13 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 newStudent.O = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newStudent.Starosta = jParser.nextTextValue().equals("1");
+                                newStudent.Starosta = Integer.parseInt(jParser.nextTextValue());
 
                                 jParser.nextToken();
-                                newStudent.NFactor = jParser.nextTextValue().equals("1");
+                                newStudent.NFactor = Integer.parseInt(jParser.nextTextValue());
 
                                 jParser.nextToken();
-                                newStudent.Expelled = jParser.nextTextValue().equals("1");
+                                newStudent.Expelled = Integer.parseInt(jParser.nextTextValue());
 
                                 result.students.add(newStudent);
                                 jParser.nextToken();
@@ -402,10 +414,6 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                 }
 
             }
-
-
-
-            Log.d(Log_TAG, "JSON finish");
             return result;
         }
     }
