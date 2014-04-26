@@ -7,5 +7,5 @@ import java.util.Date;
  */
 public class Ring {
     public Integer RingId;
-    public Date Time;
+    public String Time;
 }

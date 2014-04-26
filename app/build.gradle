@@ -29,4 +29,5 @@ dependencies {
     compile 'com.fasterxml.jackson.core:jackson-core:2.3.2'
     compile 'com.fasterxml.jackson.core:jackson-annotations:2.2.0'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.3.3'
+    compile 'com.google.code.gson:gson:2.2.+'
 }

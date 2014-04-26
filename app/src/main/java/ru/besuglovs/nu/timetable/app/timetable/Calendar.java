@@ -7,5 +7,5 @@ import java.util.Date;
  */
 public class Calendar {
     public Integer CalendarId;
-    public java.util.Date Date;
+    public String Date;
 }

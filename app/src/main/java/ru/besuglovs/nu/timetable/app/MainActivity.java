@@ -16,9 +16,12 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -88,12 +91,20 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         protected Timetable doInBackground(InputStream... params) {
             Log.d(Log_TAG, "JSON start");
 
-            Timetable result = JacksonOneLineObjectMapperParser(params[0]);
+            //Timetable result = JacksonOneLineObjectMapperParser(params[0]);
             //Timetable result = JacksonJParserDecode(params[0]);
+            Timetable result = GSON(params[0]);
 
             Log.d(Log_TAG, "JSON finish");
 
             Integer eprst = 999;
+            return result;
+        }
+
+        private Timetable GSON(InputStream inputStream) {
+            final Gson gson = new Gson();
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
+            Timetable result = gson.fromJson(reader, Timetable.class);
             return result;
         }
 
@@ -156,7 +167,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                                 jParser.nextToken();
                                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-                                newCalendar.Date = formatter.parse(jParser.nextTextValue());
+                                newCalendar.Date = jParser.nextTextValue();
 
                                 result.calendars.add(newCalendar);
                                 jParser.nextToken();
@@ -241,7 +252,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                                 jParser.nextToken();
                                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-                                newRing.Time = sdf.parse(jParser.nextTextValue());
+                                newRing.Time = jParser.nextTextValue();
 
                                 result.rings.add(newRing);
                                 jParser.nextToken();
