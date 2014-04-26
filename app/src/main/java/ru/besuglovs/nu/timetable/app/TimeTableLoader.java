@@ -11,17 +11,23 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.zip.DataFormatException;
 import java.util.zip.InflaterInputStream;
 
 /**
  * Created by bs on 20.04.2014.
  */
-public class TimeTableLoader extends Loader<String> {
+public class TimeTableLoader extends Loader<InputStream> {
 
     LoadTimeWIthAPI LoadingTask;
 
@@ -32,53 +38,38 @@ public class TimeTableLoader extends Loader<String> {
 
     public TimeTableLoader(Context context) {
         super(context);
+
         if (LoadingTask != null)
             LoadingTask.cancel(true);
         LoadingTask = new LoadTimeWIthAPI();
-        LoadingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        LoadingTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, this.getContext());
     }
 
-    private void FromTaskToLoader(String result) {
+    private void FromTaskToLoader(InputStream result) {
         deliverResult(result);
     }
 
-    class LoadTimeWIthAPI extends AsyncTask<Void, Void, String> {
+    class LoadTimeWIthAPI extends AsyncTask<Context, Void, InputStream> {
 
         public final int BUFFER_SIZE = 10000000;
 
+        Context taskContext = null;
+
         @Override
-        protected String doInBackground(Void... params) {
+        protected InputStream doInBackground(Context... params) {
             try {
                 Log.d(MainActivity.Log_TAG, "DownloadTimeTable");
+                taskContext = params[0];
                 return DownloadTimeTable();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (DataFormatException e) {
                 e.printStackTrace();
             }
-            return "123";
+            return null;
         }
 
-        private String ByteArrayToString(byte[] data) throws UnsupportedEncodingException {
-            StringBuilder sb = new StringBuilder();
-            final int CHUNK_SIZE = 100;
-            final int CNT = data.length / CHUNK_SIZE;
-            int p = 0;
-            for ( int i = 0; i < CNT; ++i, p += CHUNK_SIZE )
-            {
-                int chuckSize = CHUNK_SIZE;
-                if (p + CHUNK_SIZE > data.length)
-                {
-                    chuckSize = data.length - p;
-                }
-                final byte[] tmp = Arrays.copyOfRange(data, p, p + chuckSize);
-                final String part = new String( tmp, 0, tmp.length, "UTF-8");
-                sb.append(part);
-            }
-            return sb.toString();
-        }
-
-        private String DownloadTimeTable() throws IOException, DataFormatException {
+        private InputStream DownloadTimeTable() throws IOException, DataFormatException {
             HttpClient client = new DefaultHttpClient();
             HttpPost post = new HttpPost("http://wiki.nayanova.edu/api.php");
 
@@ -92,22 +83,26 @@ public class TimeTableLoader extends Loader<String> {
             Log.d(MainActivity.Log_TAG, "Got input stream");
 
             InflaterInputStream iis = new InflaterInputStream(inputStream);
+            return iis;
+
+            /*
             byte[] resultArray = new byte[BUFFER_SIZE];
             Integer offset = 0, bytesRead;
             while ((bytesRead = iis.read(resultArray, offset, BUFFER_SIZE - offset)) != -1)
             {
                 offset += bytesRead;
-            }
-            Log.d(MainActivity.Log_TAG, "Read complete");
+            }*/
+            //Log.d(MainActivity.Log_TAG, "Read complete");
 
-            // new String() takes forever ~ 10 min
-            // String result = new String(Arrays.copyOf(resultArray, offset), "UTF-8");
-            String result = ByteArrayToString(resultArray);
-            return result;
+            /*
+            FileOutputStream fos = taskContext.openFileOutput("json.tmp", Context.MODE_PRIVATE);
+            fos.write(Arrays.copyOf(resultArray, offset));
+            fos.close();
+            */
         }
 
         @Override
-        protected void onPostExecute(String result) {
+        protected void onPostExecute(InputStream result) {
             super.onPostExecute(result);
 
             FromTaskToLoader(result);

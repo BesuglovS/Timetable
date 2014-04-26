@@ -5,7 +5,7 @@ package ru.besuglovs.nu.timetable.app.timetable;
  */
 public class Lesson {
     public Integer LessonId;
-    public Boolean IsActive;
+    public String IsActive;
     public Integer TeacherForDisciplineId;
     public Integer CalendarId;
     public Integer RingId;

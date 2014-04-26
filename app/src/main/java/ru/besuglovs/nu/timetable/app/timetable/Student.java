@@ -8,7 +8,7 @@ public class Student {
     public String F;
     public String I;
     public String O;
-    public Boolean Starosta;
-    public Boolean NFactor;
-    public Boolean Expelled;
+    public String Starosta;
+    public String NFactor;
+    public String Expelled;
 }

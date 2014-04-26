@@ -11,11 +11,14 @@ import android.os.Bundle;
 import android.util.Log;
 
 import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -35,7 +38,7 @@ import ru.besuglovs.nu.timetable.app.timetable.TeacherForDiscipline;
 import ru.besuglovs.nu.timetable.app.timetable.Timetable;
 
 
-public class MainActivity extends Activity implements LoaderManager.LoaderCallbacks<String> {
+public class MainActivity extends Activity implements LoaderManager.LoaderCallbacks<InputStream> {
 
     static final int LOADER_ID = 1;
     static final String Log_TAG = "myLogTag";
@@ -64,8 +67,8 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     }
 
     @Override
-    public Loader<String> onCreateLoader(int id, Bundle args) {
-        Loader<String> loader = null;
+    public Loader<InputStream> onCreateLoader(int id, Bundle args) {
+        Loader<InputStream> loader = null;
         if (id == LOADER_ID) {
             loader = new TimeTableLoader(this);
         }
@@ -73,46 +76,50 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     }
 
     @Override
-    public void onLoadFinished(Loader<String> loader, String data) {
+    public void onLoadFinished(Loader<InputStream> loader, InputStream data) {
         Log.d(Log_TAG, "Done");
         DecodeJSONTask decodeTask = new DecodeJSONTask();
         decodeTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, data);
         int eprst = 999;
     }
 
-    class DecodeJSONTask extends AsyncTask<String, Void, Timetable> {
+    class DecodeJSONTask extends AsyncTask<InputStream, Void, Timetable> {
         @Override
-        protected Timetable doInBackground(String... params) {
+        protected Timetable doInBackground(InputStream... params) {
             Log.d(Log_TAG, "JSON start");
 
             Timetable result = JacksonOneLineObjectMapperParser(params[0]);
             //Timetable result = JacksonJParserDecode(params[0]);
 
-            Integer eprst = 999;
-
             Log.d(Log_TAG, "JSON finish");
+
+            Integer eprst = 999;
             return result;
         }
 
-        private Timetable JacksonOneLineObjectMapperParser(String param) {
+        private Timetable JacksonOneLineObjectMapperParser(InputStream inputStream) {
             ObjectMapper mapper = new ObjectMapper(); // can reuse, share globally
             Timetable result = null;
             try {
-                result = mapper.readValue(param, Timetable.class);
+                result = mapper.readValue(inputStream, Timetable.class);
+            } catch (JsonParseException e) {
+                e.printStackTrace();
+            } catch (JsonMappingException e) {
+                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
             return result;
         }
 
-        private Timetable JacksonJParserDecode(String param) {
+        private Timetable JacksonJParserDecode(InputStream inputStream) {
             Timetable result = new Timetable();
 
             JsonFactory jfactory = new JsonFactory();
 
             JsonParser jParser = null;
             try {
-                jParser = jfactory.createParser(param);
+                jParser = jfactory.createParser(inputStream);
 
                 while (jParser.nextToken() != null) {
                     if (jParser.getCurrentToken() == JsonToken.START_ARRAY)
@@ -202,7 +209,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 newLesson.LessonId = Integer.parseInt(jParser.nextTextValue());
 
                                 jParser.nextToken();
-                                newLesson.IsActive = Integer.parseInt(jParser.nextTextValue());
+                                newLesson.IsActive = jParser.nextTextValue();
 
                                 jParser.nextToken();
                                 newLesson.TeacherForDisciplineId = Integer.parseInt(jParser.nextTextValue());
@@ -234,7 +241,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                                 jParser.nextToken();
                                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-                                newRing.Time = jParser.nextTextValue();
+                                newRing.Time = sdf.parse(jParser.nextTextValue());
 
                                 result.rings.add(newRing);
                                 jParser.nextToken();
@@ -261,13 +268,13 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 newStudent.O = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newStudent.Starosta = Integer.parseInt(jParser.nextTextValue());
+                                newStudent.Starosta = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newStudent.NFactor = Integer.parseInt(jParser.nextTextValue());
+                                newStudent.NFactor = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newStudent.Expelled = Integer.parseInt(jParser.nextTextValue());
+                                newStudent.Expelled = jParser.nextTextValue();
 
                                 result.students.add(newStudent);
                                 jParser.nextToken();
@@ -419,7 +426,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     }
 
     @Override
-    public void onLoaderReset(Loader<String> loader) {
+    public void onLoaderReset(Loader<InputStream> loader) {
 
     }
 }
