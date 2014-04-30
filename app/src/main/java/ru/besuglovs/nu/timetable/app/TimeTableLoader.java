@@ -12,6 +12,7 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 import java.io.BufferedReader;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -19,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Scanner;
 import java.util.zip.DataFormatException;
@@ -70,35 +73,47 @@ public class TimeTableLoader extends Loader<InputStream> {
         }
 
         private InputStream DownloadTimeTable() throws IOException, DataFormatException {
-            HttpClient client = new DefaultHttpClient();
-            HttpPost post = new HttpPost("http://wiki.nayanova.edu/api.php");
+            int bufferLength = 10240000;
 
-            post.addHeader("Content-Type", "application/x-www-form-urlencoded");
-            StringEntity params = new StringEntity("{\"Parameters\":{\"action\":\"bundle\"}}");
-            post.setEntity(params);
+            URL url = new URL("http://wiki.nayanova.edu/api.php");
+            String urlParameters = "{\"Parameters\":{\"action\":\"bundle\"}}";
 
-            HttpResponse response = client.execute(post);
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setReadTimeout(10000 /* milliseconds */);
+            connection.setConnectTimeout(15000 /* milliseconds */);
+            connection.setDoOutput(true);
+            connection.setDoInput(true);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("charset", "utf-8");
+            connection.setRequestProperty("Content-Length", "" + Integer.toString(urlParameters.getBytes().length));
+            connection.setUseCaches(false);
 
-            InputStream inputStream = response.getEntity().getContent();
-            Log.d(MainActivity.Log_TAG, "Got input stream");
+            DataOutputStream wr = new DataOutputStream(connection.getOutputStream());
+            wr.writeBytes(urlParameters);
+            wr.flush();
+            wr.close();
 
-            InflaterInputStream iis = new InflaterInputStream(inputStream);
-            return iis;
+            Log.d(MainActivity.Log_TAG, "Ready to connect");
+            connection.connect();
 
-            /*
-            byte[] resultArray = new byte[BUFFER_SIZE];
+            InflaterInputStream iis = new InflaterInputStream(connection.getInputStream());
+
+            byte[] resultArray = new byte[bufferLength];
             Integer offset = 0, bytesRead;
-            while ((bytesRead = iis.read(resultArray, offset, BUFFER_SIZE - offset)) != -1)
+            while ((bytesRead = iis.read(resultArray, offset, bufferLength - offset)) != -1)
             {
                 offset += bytesRead;
-            }*/
-            //Log.d(MainActivity.Log_TAG, "Read complete");
+            }
 
-            /*
+
             FileOutputStream fos = taskContext.openFileOutput("json.tmp", Context.MODE_PRIVATE);
             fos.write(Arrays.copyOf(resultArray, offset));
             fos.close();
-            */
+            Log.d(MainActivity.Log_TAG, "File was written");
+
+            return iis;
         }
 
         @Override

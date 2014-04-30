@@ -17,11 +17,15 @@ import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.Gson;
+import com.j256.ormlite.android.apptools.OpenHelperManager;
+import com.j256.ormlite.dao.Dao;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -29,6 +33,7 @@ import java.util.ArrayList;
 import ru.besuglovs.nu.timetable.app.timetable.Auditorium;
 import ru.besuglovs.nu.timetable.app.timetable.Calendar;
 import ru.besuglovs.nu.timetable.app.timetable.ConfigOption;
+import ru.besuglovs.nu.timetable.app.timetable.DBHelper;
 import ru.besuglovs.nu.timetable.app.timetable.Discipline;
 import ru.besuglovs.nu.timetable.app.timetable.Lesson;
 import ru.besuglovs.nu.timetable.app.timetable.LessonLogEvent;
@@ -46,6 +51,16 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
     static final int LOADER_ID = 1;
     static final String Log_TAG = "myLogTag";
 
+    private DBHelper dbHelper = null;
+
+    private DBHelper getHelper() {
+        if (dbHelper == null) {
+            dbHelper =
+                    OpenHelperManager.getHelper(this, DBHelper.class);
+        }
+        return dbHelper;
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,6 +68,15 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
         Log.d(Log_TAG, "onCreate start downloding");
         DownloadTimeTable();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (dbHelper != null) {
+            OpenHelperManager.releaseHelper();
+            dbHelper = null;
+        }
     }
 
     private void DownloadTimeTable() {
@@ -91,9 +115,15 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
         protected Timetable doInBackground(InputStream... params) {
             Log.d(Log_TAG, "JSON start");
 
-            //Timetable result = JacksonOneLineObjectMapperParser(params[0]);
-            //Timetable result = JacksonJParserDecode(params[0]);
-            Timetable result = GSON(params[0]);
+            //result = JacksonOneLineObjectMapperParser(params[0]);
+            //result = GSON(params[0]);
+
+            Timetable result = null;
+            try {
+                result = JacksonJParserDecode(params[0]);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
 
             Log.d(Log_TAG, "JSON finish");
 
@@ -108,29 +138,102 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
             return result;
         }
 
-        private Timetable JacksonOneLineObjectMapperParser(InputStream inputStream) {
+        private Timetable JacksonOneLineObjectMapperParser(InputStream inputStream) throws SQLException {
             ObjectMapper mapper = new ObjectMapper(); // can reuse, share globally
             Timetable result = null;
             try {
-                result = mapper.readValue(inputStream, Timetable.class);
+                File file = new File(getFilesDir(), "json.tmp");
+
+                result = mapper.readValue(file, Timetable.class);
             } catch (JsonParseException e) {
                 e.printStackTrace();
             } catch (JsonMappingException e) {
                 e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
+
+
+            WriteToDatabase(result);
+
             return result;
         }
 
-        private Timetable JacksonJParserDecode(InputStream inputStream) {
+        private void WriteToDatabase(Timetable result) throws SQLException {
+            Dao<Auditorium, Integer> AudDAO = getHelper().getAuditoriumDao();
+            for (Auditorium aud : result.auditoriums) {
+                AudDAO.create(aud);
+            }
+
+            Dao<Calendar, Integer> CalendarDAO = getHelper().getCalendarDao();
+            for (Auditorium aud : result.auditoriums) {
+                AudDAO.create(aud);
+            }
+
+            Dao<Discipline, Integer> DisciplinesDAO = getHelper().getDisciplineDao();
+            for (Discipline discipline : result.disciplines) {
+                DisciplinesDAO.create(discipline);
+            }
+
+            Dao<Lesson, Integer> LessonDAO = getHelper().getLessonDao();
+            for (Lesson lesson : result.lessons) {
+                LessonDAO.create(lesson);
+            }
+
+            Dao<Ring, Integer> RingDAO = getHelper().getRingDao();
+            for (Ring ring : result.rings) {
+                RingDAO.create(ring);
+            }
+
+            Dao<Student, Integer> StudentDAO = getHelper().getStudentDao();
+            for (Student student : result.students) {
+                StudentDAO.create(student);
+            }
+
+            Dao<StudentGroup, Integer> StudentGroupDAO = getHelper().getStudentGroupDao();
+            for (StudentGroup studentGroup : result.studentGroups) {
+                StudentGroupDAO.create(studentGroup);
+            }
+
+            Dao<StudentsInGroups, Integer> StudentsInGroupsDAO = getHelper().getStudentsInGroupsDao();
+            for (StudentsInGroups studentsInGroups : result.studentsInGroups) {
+                StudentsInGroupsDAO.create(studentsInGroups);
+            }
+
+            Dao<Teacher, Integer> TeacherDAO = getHelper().getTeacherDao();
+            for (Teacher teacher : result.teachers) {
+                TeacherDAO.create(teacher);
+            }
+
+            Dao<TeacherForDiscipline, Integer> TeacherForDisciplineDAO =
+                    getHelper().getTeacherForDisciplineDao();
+            for (TeacherForDiscipline teacherForDiscipline : result.teacherForDisciplines) {
+                TeacherForDisciplineDAO.create(teacherForDiscipline);
+            }
+
+            Dao<ConfigOption, Integer> ConfigOptionDAO = getHelper().getConfigOptionDao();
+            for (ConfigOption configOption : result.configOptions) {
+                ConfigOptionDAO.create(configOption);
+            }
+
+            Dao<LessonLogEvent, Integer> LessonLogEventDAO = getHelper().getLessonLogEventDao();
+            for (LessonLogEvent lessonLogEvent : result.lessonLogEvents) {
+                LessonLogEventDAO.create(lessonLogEvent);
+            }
+        }
+
+        private Timetable JacksonJParserDecode(InputStream inputStream) throws SQLException {
             Timetable result = new Timetable();
 
             JsonFactory jfactory = new JsonFactory();
 
             JsonParser jParser = null;
             try {
-                jParser = jfactory.createParser(inputStream);
+                File file = new File(getFilesDir(), "json.tmp");
+
+                jParser = jfactory.createParser(file);
 
                 while (jParser.nextToken() != null) {
                     if (jParser.getCurrentToken() == JsonToken.START_ARRAY)
@@ -138,7 +241,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                         String TableName = jParser.getCurrentName();
                         if (TableName.equals("auditoriums"))
                         {
-                            result.auditoriums = new ArrayList<Auditorium>();
+                            Dao<Auditorium, Integer> AudDAO = getHelper().getAuditoriumDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Auditorium newAuditorium = new Auditorium();
@@ -149,7 +252,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newAuditorium.Name = jParser.nextTextValue();
 
-                                result.auditoriums.add(newAuditorium);
+                                AudDAO.create(newAuditorium);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON auditoriums finished");
@@ -157,7 +260,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                         if (TableName.equals("calendars"))
                         {
-                            result.calendars = new ArrayList<Calendar>();
+                            Dao<Calendar, Integer> CalendarDAO = getHelper().getCalendarDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Calendar newCalendar = new Calendar();
@@ -169,7 +272,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
                                 newCalendar.Date = jParser.nextTextValue();
 
-                                result.calendars.add(newCalendar);
+                                CalendarDAO.create(newCalendar);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON calendars finished");
@@ -177,7 +280,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                         if (TableName.equals("disciplines"))
                         {
-                            result.disciplines = new ArrayList<Discipline>();
+                            Dao<Discipline, Integer> DisciplinesDAO = getHelper().getDisciplineDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Discipline newDiscipline = new Discipline();
@@ -189,21 +292,21 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 newDiscipline.Name = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newDiscipline.Attestation = Integer.parseInt(jParser.nextTextValue());
+                                newDiscipline.Attestation = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newDiscipline.AuditoriumHours = Integer.parseInt(jParser.nextTextValue());
+                                newDiscipline.AuditoriumHours = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newDiscipline.LectureHours = Integer.parseInt(jParser.nextTextValue());
+                                newDiscipline.LectureHours = jParser.nextTextValue();
 
                                 jParser.nextToken();
-                                newDiscipline.PracticalHours = Integer.parseInt(jParser.nextTextValue());
+                                newDiscipline.PracticalHours = jParser.nextTextValue();
 
                                 jParser.nextToken();
                                 newDiscipline.StudentGroupId = Integer.parseInt(jParser.nextTextValue());
 
-                                result.disciplines.add(newDiscipline);
+                                DisciplinesDAO.create(newDiscipline);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON disciplines finished");
@@ -211,7 +314,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                         if (TableName.equals("lessons"))
                         {
-                            result.lessons = new ArrayList<Lesson>();
+                            Dao<Lesson, Integer> LessonDAO = getHelper().getLessonDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Lesson newLesson = new Lesson();
@@ -234,7 +337,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newLesson.AuditoriumId = Integer.parseInt(jParser.nextTextValue());
 
-                                result.lessons.add(newLesson);
+                                LessonDAO.create(newLesson);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON lessons finished");
@@ -242,7 +345,7 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                         if (TableName.equals("rings"))
                         {
-                            result.rings = new ArrayList<Ring>();
+                            Dao<Ring, Integer> RingDAO = getHelper().getRingDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Ring newRing = new Ring();
@@ -254,14 +357,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
                                 newRing.Time = jParser.nextTextValue();
 
-                                result.rings.add(newRing);
+                                RingDAO.create(newRing);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON rings finished");
                         }
                         if (TableName.equals("students"))
                         {
-                            result.students = new ArrayList<Student>();
+                            Dao<Student, Integer> StudentDAO = getHelper().getStudentDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Student newStudent = new Student();
@@ -287,14 +390,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newStudent.Expelled = jParser.nextTextValue();
 
-                                result.students.add(newStudent);
+                                StudentDAO.create(newStudent);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON students finished");
                         }
                         if (TableName.equals("studentGroups"))
                         {
-                            result.studentGroups = new ArrayList<StudentGroup>();
+                            Dao<StudentGroup, Integer> StudentGroupDAO = getHelper().getStudentGroupDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 StudentGroup newStudentGroup = new StudentGroup();
@@ -305,14 +408,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newStudentGroup.Name = jParser.nextTextValue();
 
-                                result.studentGroups.add(newStudentGroup);
+                                StudentGroupDAO.create(newStudentGroup);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON studentGroups finished");
                         }
                         if (TableName.equals("studentsInGroups"))
                         {
-                            result.studentsInGroups = new ArrayList<StudentsInGroups>();
+                            Dao<StudentsInGroups, Integer> StudentsInGroupsDAO = getHelper().getStudentsInGroupsDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 StudentsInGroups newStudentInGroup = new StudentsInGroups();
@@ -326,14 +429,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newStudentInGroup.StudentGroupId = Integer.parseInt(jParser.nextTextValue());
 
-                                result.studentsInGroups.add(newStudentInGroup);
+                                StudentsInGroupsDAO.create(newStudentInGroup);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON studentsInGroups finished");
                         }
                         if (TableName.equals("teachers"))
                         {
-                            result.teachers = new ArrayList<Teacher>();
+                            Dao<Teacher, Integer> TeacherDAO = getHelper().getTeacherDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 Teacher newTeacher = new Teacher();
@@ -344,14 +447,15 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newTeacher.FIO = jParser.nextTextValue();
 
-                                result.teachers.add(newTeacher);
+                                TeacherDAO.create(newTeacher);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON teachers finished");
                         }
                         if (TableName.equals("teacherForDisciplines"))
                         {
-                            result.teacherForDisciplines = new ArrayList<TeacherForDiscipline>();
+                            Dao<TeacherForDiscipline, Integer> TeacherForDisciplineDAO =
+                                    getHelper().getTeacherForDisciplineDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 TeacherForDiscipline newTeacherForDiscipline = new TeacherForDiscipline();
@@ -365,14 +469,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newTeacherForDiscipline.DisciplineId = Integer.parseInt(jParser.nextTextValue());
 
-                                result.teacherForDisciplines.add(newTeacherForDiscipline);
+                                TeacherForDisciplineDAO.create(newTeacherForDiscipline);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON teacherForDisciplines finished");
                         }
                         if (TableName.equals("configOptions"))
                         {
-                            result.configOptions = new ArrayList<ConfigOption>();
+                            Dao<ConfigOption, Integer> ConfigOptionDAO = getHelper().getConfigOptionDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 ConfigOption newConfigOption = new ConfigOption();
@@ -386,14 +490,14 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                                 jParser.nextToken();
                                 newConfigOption.Value = jParser.nextTextValue();
 
-                                result.configOptions.add(newConfigOption);
+                                ConfigOptionDAO.create(newConfigOption);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON configOptions finished");
                         }
                         if (TableName.equals("lessonLogEvents"))
                         {
-                            result.lessonLogEvents = new ArrayList<LessonLogEvent>();
+                            Dao<LessonLogEvent, Integer> LessonLogEventDAO = getHelper().getLessonLogEventDao();
 
                             while (jParser.nextToken() == JsonToken.START_OBJECT) {
                                 LessonLogEvent newLessonLogEvent = new LessonLogEvent();
@@ -409,12 +513,12 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
 
                                 jParser.nextToken();
                                 SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
-                                newLessonLogEvent.DateTime = formatter.parse(jParser.nextTextValue());
+                                newLessonLogEvent.DateTime = jParser.nextTextValue();
 
                                 jParser.nextToken();
                                 newLessonLogEvent.Comment = jParser.nextTextValue();
 
-                                result.lessonLogEvents.add(newLessonLogEvent);
+                                LessonLogEventDAO.create(newLessonLogEvent);
                                 jParser.nextToken();
                             }
                             Log.d(Log_TAG, "JSON lessonLogEvents finished");
@@ -422,8 +526,6 @@ public class MainActivity extends Activity implements LoaderManager.LoaderCallba
                     }
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ParseException e) {
                 e.printStackTrace();
             } finally {
                 try {

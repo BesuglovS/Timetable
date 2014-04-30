@@ -1,23 +1,23 @@
 package ru.besuglovs.nu.timetable.app.timetable;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by bs on 21.04.2014.
  */
 public class Timetable {
-    public ArrayList<Auditorium> auditoriums;
-    public ArrayList<Calendar> calendars;
-    public ArrayList<Discipline> disciplines;
-    public ArrayList<Lesson> lessons;
-    public ArrayList<Ring> rings;
-    public ArrayList<Student> students;
-    public ArrayList<StudentGroup> studentGroups;
-    public ArrayList<StudentsInGroups> studentsInGroups;
-    public ArrayList<Teacher> teachers;
-    public ArrayList<TeacherForDiscipline> teacherForDisciplines;
+    public List<Auditorium> auditoriums;
+    public List<Calendar> calendars;
+    public List<Discipline> disciplines;
+    public List<Lesson> lessons;
+    public List<Ring> rings;
+    public List<Student> students;
+    public List<StudentGroup> studentGroups;
+    public List<StudentsInGroups> studentsInGroups;
+    public List<Teacher> teachers;
+    public List<TeacherForDiscipline> teacherForDisciplines;
 
-    public ArrayList<ConfigOption> configOptions;
-    public ArrayList<LessonLogEvent> lessonLogEvents;
+    public List<ConfigOption> configOptions;
+    public List<LessonLogEvent> lessonLogEvents;
+
 }
